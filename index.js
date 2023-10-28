@@ -1,5 +1,6 @@
 const TelegramBot = require('node-telegram-bot-api');
 const calendar = require('./calendar')
+const db = require('./db')
 require('dotenv').config();
 
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
@@ -40,6 +41,7 @@ bot.on('message', (msg) => {
           calendar.insertEvent(event).then(response =>{
             if( response.status === 200){
               bot.sendMessage(chatId, `Pronto! Você tem uma consulta marcada para o dia ${date[0]}/${date[1]}.`);
+              db.insertEventOnDB(event)
             }
           })
         }
