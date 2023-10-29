@@ -3,18 +3,21 @@ const TelegramBot = require('node-telegram-bot-api');
 const calendar = require("./calendar")
 const chatRouter = require("./chat-router");
 
-const auth = require("./auth")
+const auth = require("./auth");
+const { notificateUsers } = require('./notifications');
 
-const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
+const TELEGRAM_BOT_TOKEN = '6709653999:AAHkNF1g9y_2jLccfM_uXOnM6MUkiI9UzsY';
 
 ////////////////////////////////////////////////////////////////////////////
 const bot = new TelegramBot(TELEGRAM_BOT_TOKEN, { polling: true });
 
+notificateUsers(bot)
 bot.on('message', async (msg) => {
     const chatId = msg.chat.id;
     const messageText = msg.text;
     const {userID, interactionId, interactionNum} = await auth.login(chatId);
     const debug = false;
+    console.log('chat id do amigo', chatId)
 
     // await calendar.getDisponibilityInRangeOfMonths(1);
     
