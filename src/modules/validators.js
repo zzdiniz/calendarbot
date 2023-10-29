@@ -1,3 +1,5 @@
+const moment = require("moment");
+
 const REGEX = {
     cpf: /^(\d{3}[\W]?){3}\d{2}$/gi,
     email: /^\w+@\w+(.com|(.[a-zA-Z]+)*)$/gi,
@@ -16,3 +18,5 @@ exports.valid_telefone = (entry) => {return REGEX.telefone.test(entry);}
 exports.valid_email = (entry) => {return REGEX.email.test(entry);}
 
 exports.normaliza = (entry) => { return entry.replaceAll(REGEX.normaliza, "")}
+
+exports.validDate = (entry) => { return moment().isSameOrBefore(moment(entry))} 

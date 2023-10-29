@@ -1,21 +1,16 @@
 const mongoose = require("mongoose");
+const { invalidInsertMessage, validDate } = require("../modules/validators");
 
 const eventSchema = new mongoose.Schema({
 
-        startAt: {
-            type: Number
-        },
-        endAt: {
-            type: Number
-        },
-        day: {
-            type: Number
-        },
-        month: {
-            type: Number
-        },
-        year: {
-            type: Number
+        date: {
+            type: Date,
+            unique: true,
+            required: true,
+            validate: {
+                validator: validDate,
+                message: invalidInsertMessage
+            }
         },
         userId: {
             type: mongoose.SchemaTypes.ObjectId,

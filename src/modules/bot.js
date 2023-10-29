@@ -1,5 +1,6 @@
 const TelegramBot = require('node-telegram-bot-api');
 
+const calendar = require("./calendar")
 const chatRouter = require("./chat-router");
 
 const auth = require("./auth")
@@ -15,6 +16,7 @@ bot.on('message', async (msg) => {
     const {userID, interactionId, interactionNum} = await auth.login(chatId);
     const debug = false;
 
+    // await calendar.getDisponibilityInRangeOfMonths(1);
     
     if (messageText === "/start") {
       chatRouter.changeInteraction(interactionId, interactionNum, -interactionNum);
@@ -30,24 +32,27 @@ bot.on('message', async (msg) => {
         response = await chatRouter.cadastraUsuario_cpf(bot, chatId, messageText, userID);
         if (response === false) { jumpTo = +4 };
         break;
-        case 1:
-          response = await chatRouter.cadastraUsuario_nome(bot, chatId, messageText, userID);
+      case 1:
+        response = await chatRouter.cadastraUsuario_nome(bot, chatId, messageText, userID);
         break;
       case 2:
         response = await chatRouter.cadastraUsuario_email(bot, chatId, messageText, userID);
         break;
-        case 3:
-          response = await chatRouter.cadastraUsuario_telefone(bot, chatId, messageText, userID);
-          break;
-        }
-        if (response === undefined) { jumpTo = 0 };
-        chatRouter.changeInteraction(interactionId, interactionNum, jumpTo);
-        
-        if (debug) {
-          console.log("userID:\n\t"+userID+"\ninteractionID:\n\t"+interactionId+"\ninteractionNum\n\t"+interactionNum)
-          // await chatRouter.changeInteraction(interactionId, interactionNum, +1);
-          // bot.sendMessage(chatId, messageText)
-        }
+      case 3:
+        response = await chatRouter.cadastraUsuario_telefone(bot, chatId, messageText, userID);
+        break;
+      case 4:
+        response = await chatRouter.selecionaMeses(bot, chatId, messageText, userID, 2000)
+    }
+    if (response === undefined) { jumpTo = 0 };
+    
+    chatRouter.changeInteraction(interactionId, interactionNum, jumpTo);
+    
+    if (debug) {
+      console.log("userID:\n\t"+userID+"\ninteractionID:\n\t"+interactionId+"\ninteractionNum\n\t"+interactionNum)
+      // await chatRouter.changeInteraction(interactionId, interactionNum, +1);
+      // bot.sendMessage(chatId, messageText)
+    }
         
         
         
