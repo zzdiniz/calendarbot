@@ -251,6 +251,7 @@ exports.setAppointment = async (userID, selectedDate, chatId) => {
             'timeZone': 'America/Sao_Paulo',
         },
       }
-      Event.create({date:selectedDate, chatId: chatId, userId: userID})
-    Calendar.insertEvent(event)
+    Event.create({date:selectedDate, chatId: chatId, userId: userID})
+    const response = await Calendar.insertEvent(event)
+    return response
 }

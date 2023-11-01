@@ -1,6 +1,7 @@
 const auth = require("./auth");
 const ChatRouter = require("./chat-router");
 const config = require("../../config/config")
+const moment = require('moment')
 const TelegramBot = require('node-telegram-bot-api');
 
 const { notificateUsers } = require('./notifications');
@@ -124,7 +125,10 @@ bot.on("callback_query", async (query) => {
           break;
         case 8:
           await ChatRouter.setAppointment(userID, responseData, chatId)
-            .then(res => responseRouter = res)
+            .then(res => {
+              const data = moment(res.data.start.dateTime).format('LLL')
+              bot.sendMessage(chatId,`Combinado! Sua consulta está marcada para ${data}. Estamos ansiosos pelo nosso encontro.`)
+            })
             .catch(err => console.log(err))
           break;
       }
