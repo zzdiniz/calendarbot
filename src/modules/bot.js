@@ -32,7 +32,7 @@ bot.on('message', async (msg) => {
           .then(async res =>{ 
             if (res.status == 'logged') {
               bot.sendMessage(chatId, res.message);
-              await ChatRouter.changeInteraction(interactionId, 5)
+              await ChatRouter.changeInteraction(interactionId, 4)
               bot.sendMessage(chatId, "Selecione um dos seguintes meses:", await ChatRouter.sendDisponibleMonths(config.numberOfNextMonths));
             } else if (res.status == "signin") {
               bot.sendMessage(chatId, res.message);
@@ -123,9 +123,9 @@ bot.on("callback_query", async (query) => {
             .catch(err => console.log(err.message))
           break;
         case 8:
-          await ChatRouter.setAppointment(userID, responseData)
+          await ChatRouter.setAppointment(userID, responseData, chatId)
             .then(res => responseRouter = res)
-            .catch(err => console.log(err.message))
+            .catch(err => console.log(err))
           break;
       }
     }
