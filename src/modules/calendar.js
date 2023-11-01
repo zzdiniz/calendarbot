@@ -80,7 +80,27 @@ exports.getEventByDateTime = async (startDateTime,endDateTime) => {
         return null; // Retorna null em caso de erro
     }
 };
+exports.getBusySchedules = async (startDateTime,endDateTime) =>{
+    try {
+        const response = await calendar.events.list({
+            auth: auth,
+            calendarId: CALENDAR_ID,
+            timeMin: startDateTime, // Data e hora início
+            timeMax: endDateTime, // Data e hora fim
+            timeZone: 'America/Sao_Paulo'
+        });
 
+        if (response.data.items.length > 0) {
+            // Retorna o primeiro evento correspondente encontrado
+            return response.data.items;
+        } else {
+            return null; // Retorna null se nenhum evento correspondente for encontrado
+        }
+    } catch (error) {
+        console.log(`Error at getEventByDateTime --> ${error}`);
+        return null; // Retorna null em caso de erro
+    }
+}
 const getDisponibilityMonthAPI = async (mom) => {
     if (!isMonthValid(mom)) {
         console.warn('Mês Inválido ' + mom.month());

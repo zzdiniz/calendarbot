@@ -5,6 +5,7 @@ const chatRouter = require("./chat-router");
 
 const auth = require("./auth");
 const { notificateUsers } = require('./notifications');
+const { getAvailableSchedules } = require('./events');
 
 const TELEGRAM_BOT_TOKEN = '6709653999:AAHkNF1g9y_2jLccfM_uXOnM6MUkiI9UzsY';
 
@@ -12,6 +13,7 @@ const TELEGRAM_BOT_TOKEN = '6709653999:AAHkNF1g9y_2jLccfM_uXOnM6MUkiI9UzsY';
 const bot = new TelegramBot(TELEGRAM_BOT_TOKEN, { polling: true });
 
 notificateUsers(bot)
+getAvailableSchedules()
 bot.on('message', async (msg) => {
     const chatId = msg.chat.id;
     const messageText = msg.text;
