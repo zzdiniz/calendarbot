@@ -102,10 +102,12 @@ exports.cadastraUsuario_telefone = async (message, userID) => {
             } 
         ).catch(err => {
             console.log(`Erro ao cadastrar o telefone do usuario: ${err}`)
-            throw Error("Erro no cadastro do telefone!\nPor favor, tente novamente")
+            throw Error("Erro no cadastro do telefone!\nPor favor, tente novamente");
         })
     }
-    return res;
+    else {
+        throw Error(`Telefone já cadastrado por outro usuário! Por favor, insira outro número`)
+    }
 
 }
 
@@ -236,6 +238,20 @@ exports.sendDisponibleHoursinDay = async (selectedDate) => {
     .catch(err => console.log(err.message));
 }
 
-exports.setAppointment = async (userID, selectedDate) => {
-
+exports.setAppointment = async (userID, selectedDate, chatId) => {
+    const event = {
+        'summary': 'Consulta do Rodrigo',
+        'description': `This is the description.`,
+        'start': {
+            'dateTime': selectedDate,
+            'timeZone': 'America/Sao_Paulo',
+        },
+        'end': {
+            'dateTime': moment(selectedDate).add(1,'hour').toISOString(),
+            'timeZone': 'America/Sao_Paulo',
+        },
+      }
+    Event.create({date:selectedDate, chatId: chatId, userId: userID})
+    const response = await Calendar.insertEvent(event)
+    return response
 }
