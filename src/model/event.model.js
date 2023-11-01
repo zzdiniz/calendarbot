@@ -12,6 +12,9 @@ const eventSchema = new mongoose.Schema({
                 message: invalidInsertMessage
             }
         },
+        chatId:{
+            type: String
+        },
         userId: {
             type: mongoose.SchemaTypes.ObjectId,
             ref: 'User'

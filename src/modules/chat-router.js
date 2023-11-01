@@ -1,21 +1,20 @@
-const TelegramBot = require("node-telegram-bot-api")
-const validators = require("./validators")
-const User = require("../model/user.model")
+const Calendar = require("./calendar");
 const Event = require("../model/event.model")
 const Interaction = require("../model/interaction.model");
-const { getDisponibilityMonthAPI } = require("./calendar");
 const moment = require("moment")
+const TelegramBot = require("node-telegram-bot-api")
+const User = require("../model/user.model")
+const validators = require("./validators");
 
-const changeInteraction = async (interactionId, interactionNum, increment) => {
+exports.changeInteraction = async (interactionId, change, auxData = []) => {
     // console.log(`changeInt:\n${interactionId}\n${interactionNum}\n${increment}`)
-    await Interaction.findByIdAndUpdate(interactionId, {interaction: interactionNum + increment}).then(
-        update => console.log("Updated Interaction: "+update.interaction)
-    ).catch(
-        err => console.log(`Erro em atualizar a interação:\n${err}\n`)
-    )
+    await Interaction.findByIdAndUpdate(interactionId, {interaction: change, auxData: auxData})
+        .then(
+            update => console.log(`Updated Interaction: ${change}`)
+        ).catch(
+            err => console.log(`Erro em atualizar a interação:\n${err}\n`)
+        )
 }
-
-exports.changeInteraction = changeInteraction
 
 exports.start = (bot, chatId, message) => {
     const returnMessage =   "Olá!\n" + 
@@ -24,109 +23,219 @@ exports.start = (bot, chatId, message) => {
     bot.sendMessage(chatId, returnMessage); 
 }
 
-exports.cadastraUsuario_cpf = async (bot, chatId, message, idUser) => {
+exports.cadastraUsuario_cpf = async (message, userID) => {
     let valid_cpf = validators.valid_cpf(message);
-    let res = true;
     if (!valid_cpf) {
-        bot.sendMessage(chatId, "CPF INVÁLIDO!\nPor favor, insira novamente")
-        return undefined;
+        throw Error("CPF INVÁLIDO!\nPor favor, insira novamente")
     } else {
         const cpf = validators.normaliza(message);
-        const user = await User.findOne({cpf: cpf}).exec();
+        const user = await User.findOne({cpf: cpf}).exec()
+            .then(result => result);
          
         if (user) {
-            bot.sendMessage(chatId, `Bem vindo de volta ${user.nome}`)
-            return false
+            return {status: 'logged', message: `Bem vindo de volta ${user.nome}`}
         }
 
-        User.findByIdAndUpdate(idUser, {cpf: cpf}).then(
+        return await User.findByIdAndUpdate(userID, {cpf: cpf}).then(
             updated => {
                 console.log(`User: ${updated.id} added cpf: ${cpf}`)
-                bot.sendMessage(chatId, "Parece que é sua primeira vez por aqui\nVamos fazer seu cadastro\nPor favor, qual seu nome?");
+                return {status: "signin", message: "Parece que é sua primeira vez por aqui\nVamos fazer seu cadastro\nPor favor, qual seu nome?"};
             } 
         ).catch(
             err => {
                 console.log(`Erro ao cadastrar o cpf do usuario: ${err}`)
-                bot.sendMessage(chatId, "ERRO NO CADASTRO!\nPor favor, insira seu cpf novamente");
-                res = undefined;
+                throw Error("ERRO NO CADASTRO!\nPor favor, insira seu cpf novamente");
             })
-        return res;
     }
 
 }
 
-exports.cadastraUsuario_nome = async (bot, chatId, message, idUser) => {
+exports.cadastraUsuario_nome = async (message, userID) => {
     const nome = message;
-    let res = true;
-    await User.findByIdAndUpdate(idUser, {nome: nome}).then(
+    return await User.findByIdAndUpdate(userID, {nome: nome}).then(
         updated => {
             console.log(`User: ${updated.id} added name: ${nome}`)
-            bot.sendMessage(chatId, `É um prazer te conhecer ${nome}!\nAgora para continuar seu cadastro, qual seu email?`);
+            return `É um prazer te conhecer ${nome}!\nAgora para continuar seu cadastro, qual seu email?`;
         } 
     ).catch(err => {
         console.log(`Erro ao cadastrar o nome do usuario: ${err}`)
-        bot.sendMessage(chatId, "ERRO NO CADASTRO!\nPor favor, insira seu nome novamente")
-        res = undefined;
+        throw Error("ERRO NO CADASTRO!\nPor favor, insira seu nome novamente")
     });
-    return res
 }
-exports.cadastraUsuario_email = async (bot, chatId, message, idUser) => {
+exports.cadastraUsuario_email = async (message, userID) => {
     let valid_email = validators.valid_email(message);
-    let res = true;
-    if (!valid_email) {
-        bot.sendMessage(chatId, "EMAIL INVÁLIDO!\nPor favor, insira novamente")
-        return undefined;
-    } else {
-        const email = message; // testa
-        const user = await User.findOne({email: email}).exec();
-         
-        if (user) {
-            bot.sendMessage(chatId, `Email ja cadastrado por outro usuário! Por favor, insira outro email`)
-            return undefined;
-        }
 
-        await User.findByIdAndUpdate(idUser, {email: email}).then(
+    if (!valid_email) {
+        throw Error("EMAIL INVÁLIDO!\nPor favor, insira novamente")
+    } 
+
+    const email = message;
+    const user = await User.findOne({email: email}).exec();
+        
+    if (user) {
+        throw Error(`Email ja cadastrado por outro usuário! Por favor, insira outro email`)
+    }
+
+    return await User.findByIdAndUpdate(userID, {email: email}).then(
+        updated => {
+            console.log(`User: ${updated.id} added email: ${email}`)
+            return (`Ótimo, agora para completar seu cadastro só preciso do seu número de telefone para contato`);
+        } 
+    ).catch(err => {
+        console.log(`Erro ao cadastrar o email do usuario: ${err}`)
+        throw Error("Erro no cadastro do email!\nPor favor, tente novamente");
+    })
+}
+exports.cadastraUsuario_telefone = async (message, userID) => {
+    let valid_telefone = validators.valid_telefone(message);
+    if (!valid_telefone) {
+        throw Error("TELEFONE INVÁLIDO!\nPor favor, insira novamente")
+    } 
+    const telefone = validators.normaliza(message);
+    const user = await User.findOne({telefone: telefone}).exec();
+        
+    if (!user) {
+        return await User.findByIdAndUpdate(userID, {telefone: telefone}).then(
             updated => {
-                console.log(`User: ${updated.id} added email: ${email}`)
-                bot.sendMessage(chatId, `Ótimo, agora para completar seu cadastro só preciso do seu número de telefone para contato`);
+                console.log(`User: ${updated.id} added telefone: ${telefone}`)
+                return `Cadastro finalizado com sucesso!`;
             } 
         ).catch(err => {
-            console.log(`Erro ao cadastrar o email do usuario: ${err}`)
-            bot.sendMessage(chatId, "Erro no cadastro do email!\nPor favor, tente novamente");
-            res = undefined;
+            console.log(`Erro ao cadastrar o telefone do usuario: ${err}`)
+            throw Error("Erro no cadastro do telefone!\nPor favor, tente novamente")
         })
-        return res;
     }
+    return res;
+
 }
-exports.cadastraUsuario_telefone = async (bot, chatId, message, idUser) => {
-    let valid_telefone = validators.valid_telefone(message);
-    let res = undefined;
-    if (!valid_telefone) {
-        bot.sendMessage(chatId, "TELEFONE INVÁLIDO!\nPor favor, insira novamente")
-        return undefined;
-    } else {
-        const telefone = validators.normaliza(message);
-        const user = await User.findOne({telefone: telefone}).exec();
-         
-        if (!user) {
-            await User.findByIdAndUpdate(idUser, {telefone: telefone}).then(
-                updated => {
-                    console.log(`User: ${updated.id} added telefone: ${telefone}`)
-                    res = true;
-                } 
-            ).catch(err => {
-                console.log(`Erro ao cadastrar o telefone do usuario: ${err}`)
-                bot.sendMessage(chatId, "Erro no cadastro do telefone!\nPor favor, tente novamente");
-                res = undefined;
+
+exports.sendDisponibleMonths = async (numberOfMonths) => {
+    return await Calendar.showNextMonths(numberOfMonths)
+        .then( data => {
+            const options = {
+                reply_markup: {
+                    inline_keyboard:  
+                        [
+                            [ data[0], data[1] ],
+                            [ data[2], data[3] ],
+                        ]
+                    
+                }
+            }
+            return options;
+        })
+        .catch(e => console.log(e.message))
+}
+
+exports.sendDisponibleWeeks = async (selectedDate) => {
+    return await Calendar.getDisponibilityMonthAPI(moment(selectedDate))
+        .then( data => {
+            const diasNoMes = moment(data[0].callback_data).daysInMonth()
+            // Map para verificar se existem dias no periodo: Later
+            const weeks = [
+                `01/${moment(data[0].callback_data).month() + 1} - 07/${moment(data[0].callback_data).month() + 1}`,
+                `08/${moment(data[0].callback_data).month() + 1} - 14/${moment(data[0].callback_data).month() + 1}`,
+                `15/${moment(data[0].callback_data).month() + 1} - 21/${moment(data[0].callback_data).month() + 1}`,
+                `22/${moment(data[0].callback_data).month() + 1} - 28/${moment(data[0].callback_data).month() + 1}`
+            ];
+
+            const callback_datas = [
+                `${moment(data[0].callback_data).startOf("month").hour(8).toISOString()}!${moment(data[0].callback_data).date(7).hour(18).toISOString()}`,
+                `${moment(data[0].callback_data).date(8).hour(8).toISOString()}!${moment(data[0].callback_data).date(14).hour(18).toISOString()}`,
+                `${moment(data[0].callback_data).date(15).hour(8).toISOString()}!${moment(data[0].callback_data).date(21).hour(18).toISOString()}`,
+                `${moment(data[0].callback_data).date(22).hour(8).toISOString()}!${moment(data[0].callback_data).date(28).hour(18).toISOString()}`,
+                
+            ]
+            
+            if (diasNoMes > 29) { 
+                weeks.push(`29/${moment(data[0].callback_data).month() + 1} - ${diasNoMes}/${moment(data[0].callback_data).month() + 1}`)
+                callback_datas.push(`${moment(data[0].callback_data).date(29).hour(8).toISOString()}!${moment(data[0].callback_data).endOf("month").hour(18).toISOString()}`,)
+            }
+            else if (diasNoMes === 29) {
+                weeks.push(`Dia 29/${moment(data[0].callback_data).month() + 1}`)
+                callback_datas.push(`${moment(data[0].callback_data).date(29).hour(8)}!${moment(data[0].callback_data).endOf("month").hour(18)}`)
+            };
+
+
+
+            const inline_keyboard = [
+                [ {text: `${weeks[0]}`, callback_data: `${callback_datas[0]}`}, {text: `${weeks[1]}`, callback_data: `${callback_datas[1]}`} ],
+                [ {text: `${weeks[2]}`, callback_data: `${callback_datas[2]}`}, {text: `${weeks[3]}`, callback_data: `${callback_datas[3]}`} ],
+                [ {text: "VOLTAR", callback_data: `${callback_datas[0]}`} ]
+            ]
+
+            if (weeks.length == 5) {
+                inline_keyboard[2].push({text: `${weeks[4]}`, callback_data: `${callback_datas[4]}`})
+            }
+
+
+            const options = {
+                reply_markup: {
+                    inline_keyboard:  inline_keyboard
+                }
+            }
+        
+            return options
+        })
+}
+
+exports.sendDisponibleDaysInWeek = async (selectedDate) => {
+    const dates = selectedDate.split("!") 
+    return await Calendar.getDisponibilityWeekAPI(dates[0], dates[1])
+        .then(freeDays => {
+            const inline_keyboard = []
+
+            let i = -1;
+
+            freeDays.forEach((day, index) => {
+                if (index % 3 == 0) {
+                    inline_keyboard.push([]);
+                    i++;
+                }
+                inline_keyboard[i].push(day);
             })
-        }
-        if (res != undefined) { bot.sendMessage(chatId, `Cadastro finalizado com sucesso! Vamos Marcar uma consulta:`); }
-        return res;
-    }
+
+            inline_keyboard[i].unshift({text: "VOLTAR", callback_data: `-1`})
+
+            const options = {
+                reply_markup: {
+                    inline_keyboard: inline_keyboard
+                }
+            }
+
+            return options;
+        })
+        .catch(err => console.log(err.message));
 }
 
-exports.selecionaMeses = async (bot, chatId, message, idUser, interval) => {
-    const response = await getDisponibilityMonthAPI(moment().add("1", "month"))
+exports.sendDisponibleHoursinDay = async (selectedDate) => {
+    return await Calendar.getDisponibilityDayAPI(moment(selectedDate))
+    .then(freeHours => {
+        const inline_keyboard = []
 
-    bot.sendMessage(chatId, "Deu bom")
+        let i = -1;
+
+        freeHours.forEach((hour, index) => {
+            if (index % 3 == 0) {
+                inline_keyboard.push([]);
+                i++;
+            }
+            inline_keyboard[i].push(hour);
+        })
+
+        inline_keyboard[i].unshift({text: "VOLTAR", callback_data: `-1`})
+
+        const options = {
+            reply_markup: {
+                inline_keyboard: inline_keyboard
+            }
+        }
+        
+        return options;
+    })
+    .catch(err => console.log(err.message));
+}
+
+exports.setAppointment = async (userID, selectedDate) => {
+
 }

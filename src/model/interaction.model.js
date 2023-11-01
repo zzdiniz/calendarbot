@@ -9,6 +9,10 @@ const interactionSchema = new mongoose.Schema({
         type: Number,
         default: 0,
     },
+    auxData: {
+        type: Array,
+        default: []
+    }
 });
 
 const interactionModel = mongoose.model("Interaction", interactionSchema)

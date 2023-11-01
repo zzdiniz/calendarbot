@@ -15,6 +15,7 @@
     "google-auth-library": "^9.1.0",
     "googleapis": "^128.0.0",
     "moment": "^2.29.4",
+    "moment-timezone": "^0.5.43",
     "mongoose": "^7.6.3",
     "node-telegram-bot-api": "^0.63.0"
   },
