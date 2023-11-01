@@ -102,10 +102,12 @@ exports.cadastraUsuario_telefone = async (message, userID) => {
             } 
         ).catch(err => {
             console.log(`Erro ao cadastrar o telefone do usuario: ${err}`)
-            throw Error("Erro no cadastro do telefone!\nPor favor, tente novamente")
+            throw Error("Erro no cadastro do telefone!\nPor favor, tente novamente");
         })
     }
-    return res;
+    else {
+        throw Error(`Telefone já cadastrado por outro usuário! Por favor, insira outro número`)
+    }
 
 }
 
