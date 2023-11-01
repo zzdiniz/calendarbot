@@ -28,12 +28,22 @@ moment.locale("pt-br");
 
 require('dotenv').config();
 
+const isToday = (mom, comparison = moment()) => mom.isSame(comparison, "day")
+
 const isDayValid = (mom) => !([0,6].includes(mom.weekday()))
 
+exports.isDayValid = isDayValid
+
 const isMonthValid = (mom) => {
-    let aux = mom.clone().add("3", "d").startOf("week");
+    let endOfMonth = mom.clone().endOf("month");
+    let diffFromEndOfMonth = endOfMonth.diff(mom, "d");
+   
+    if ((!isDayValid(mom) && diffFromEndOfMonth < 3)) {
+        return false;
+    }
     
-    if (isDayValid(mom) && aux.month() != mom.month()) { return false }
+
+    if (!isDayValid(mom) && mom.clone().add(1, "day").isSame(mom, "month" )){ return false }
 
     return true;
 }
@@ -102,19 +112,25 @@ exports.getBusySchedules = async (startDateTime,endDateTime) =>{
     }
 }
 const getDisponibilityMonthAPI = async (mom) => {
-    if (!isMonthValid(mom)) {
-        console.warn('Mês Inválido ' + mom.month());
-        return [];
+    const queryCurrentMonth = (mom) => moment().isSame(mom, "month")
+    console.log("Mês"+mom.toISOString())
+    const query = {
+        start: queryCurrentMonth(mom) ? mom.clone().hour(WORK_HOURS.start).startOf("hour") : mom.clone().startOf("month").hour(WORK_HOURS.start).startOf("hour"),
+        end: mom.clone().endOf("month").hour(WORK_HOURS.end).startOf("hour"),
     }
+    
+    /* if (!isMonthValid(query.start)) {
+        console.warn('Mês Inválido ' + (mom.month() + 1));
+        return [];
+    } */
 
-    console.log(`startTime: ${ mom.clone().startOf("month").hour(WORK_HOURS.start).startOf("hour").utc().format()}`)
-    console.log(`endTime: ${ mom.clone().endOf("month").hour(WORK_HOURS.start).startOf("hour").utc().format()}`)
+
 
     const request = {
         auth:auth,
         resource: {
-            timeMin: mom.clone().startOf("month").hour(WORK_HOURS.start).startOf("hour").utc().format(),
-            timeMax: mom.clone().endOf("month").hour(WORK_HOURS.end).startOf("hour").utc().format(),
+            timeMin: query.start.toISOString(),
+            timeMax: query.end.toISOString(),
             timeZone: "America/Sao_Paulo",
             items: [
                 {
@@ -137,63 +153,149 @@ const getDisponibilityMonthAPI = async (mom) => {
             .filter(obj => isDayValid(moment(obj.start)))
             .map(obj => {
                 let start = moment(obj.start)
-                console.log(start.format("LLL"))
                 return start
             });
         
-        const freeTimes = [];
+        const freeDays = [];
 
-        for (let day = 1; day <= mom.daysInMonth(); day++) {
+        let day = queryCurrentMonth(mom) ? mom.clone().add("1", "d").date() : 1;
+
+        for (day; day <= mom.daysInMonth(); day++) {
+            
             let aux = mom.clone().date(day);
-            for(let hora = WORK_HOURS.start; hora < WORK_HOURS.end; hora++) {
-                aux.hour(hora).startOf("hour");
-                let isManha = hora >= WORK_HOURS.start && hora < WORK_HOURS.interval.start
-                let isTarde = hora >= WORK_HOURS.interval.end && hora < WORK_HOURS.end
-                if ((isManha || isTarde) && busyTimes.includes(aux)) { continue }
-                let free = moment(aux).hour(hora)
-                console.log("Free: "+free.format("LLL"))
-                freeTimes.push(free);
+            
+            if (!isDayValid(mom.clone().date(day))) { continue }
 
+            for(let hora = WORK_HOURS.start; hora < WORK_HOURS.end; hora++) {
+                
+                aux.hour(hora).startOf("hour");
+                
+                if (isHorarioDeTrabalho(hora) && !busyTimes.some(el => aux.isSame(el))) { 
+                    let free = aux.clone()
+                    const pattern = {text: `${free.format('[Dia] DD')}`, callback_data: `${free.toISOString()}`};
+                    freeDays.push(pattern);
+                    break; 
+                }
             }
 
         }
-        return freeTimes;
+        return freeDays;
     }
 }
-exports.getDisponibilityMonthAPI = getDisponibilityMonthAPI
-/* const getDisponibilityMonth = async (mom) => {
-    const monthDays = mom.daysInMonth();
+
+exports.getDisponibilityWeekAPI = async (initialDate, finalDate) => {
+    const busy = await this.getBusySchedules(moment(initialDate).toISOString(), moment(finalDate).toISOString())
+    
+    const busyFormated = busy!=null ? busy.map(res => moment(res.start.dateTime)) 
+        .filter(day => isDayValid(moment(day)))
+        : [];
+        
+
+    //time.isBetween(weekStartDate, weekEndDate, 'day', '[]')
+    
     const freeDays = [];
-    let day = mom.month() == moment().month() ? mom.date() : 1; 
-    for (day; day <= monthDays; day++) {
-        let freeHoursInfo = await getDisponibilityDay(mom.date(day));
-        console.log("FreeHoursInfo: "+freeHoursInfo)
-        if (freeHoursInfo.length == 0) { continue };
-        freeDays.push({
-            day: day,
-            freeHours: freeHoursInfo
-        })
+
+    for (let weekDay = 0; weekDay<7; weekDay++) {
+        let aux = moment(initialDate).add(weekDay, "days");
+        if (!isDayValid(aux)) {continue};
+        for (let hour = WORK_HOURS.start; hour < WORK_HOURS.end; hour++) {
+            aux.hour(hour).startOf(hour);
+            if (isHorarioDeTrabalho(hour) && !busyFormated.some(el => aux.isSame(el))) {
+                let free = aux.clone()
+                const pattern = {text: `${free.format('[Dia] DD/MM')}`, callback_data: `${free.toISOString()}`};
+                freeDays.push(pattern);
+                break;
+            }
+        }       
     }
 
     return freeDays;
-} */
+}
 
-/* const getDisponibilityInRangeOfMonths = async (maxFromNow) => {
-    let max = maxFromNow + 1;
-    const monthsAvailable = [];
-    for (let i = 0; i < max; i++) {
-        
-        let freeDaysInfo = await getDisponibilityMonth(moment().add(`${i}`, "months"));
 
-        if (freeDaysInfo.length == 0) { 
-            max++; 
-            continue;
-        }
-        monthsAvailable.push({
-            month: moment().month(),
-            freeDays: freeDaysInfo,
-        })
+const getDisponibilityDayAPI = async (mom) => {
+    const query = {
+        start: mom.clone().hour(WORK_HOURS.start).startOf("hour").utc().format(),
+        end: mom.clone().hour(WORK_HOURS.end).startOf("hour").utc().format(),
     }
-} */
 
-/* exports.getDisponibilityInRangeOfMonths = getDisponibilityInRangeOfMonths; */
+    const request = {
+        auth:auth,
+        resource: {
+            timeMin: query.start,
+            timeMax: query.end,
+            timeZone: "America/Sao_Paulo",
+            items: [
+                {
+                    id: CALENDAR_ID
+                }
+            ]
+        }
+    }
+
+    let response;
+
+    try {
+        response = await calendar.freebusy.query(request);
+    } catch (err) {
+        console.error('The API returned an error: ' + err);
+        return;
+    } finally {
+        const busyTimes = response
+            .data
+            .calendars[CALENDAR_ID]
+            .busy
+            .map(obj => {
+                let start = moment(obj.start)
+                return start
+            });
+        
+        const freeHours = [];
+
+        let aux = mom.clone();
+
+        for(let hora = WORK_HOURS.start; hora < WORK_HOURS.end; hora++) {
+                
+            aux.hour(hora).startOf("hour")
+            
+            if (!isHorarioDeTrabalho(hora) || busyTimes.some(el => aux.isSame(el))) { continue }
+            
+            let free = aux.clone()
+            
+            const pattern = {text: `${free.format('HH:mm [horas]')}`, callback_data: `${aux.toISOString()}`};
+
+            freeHours.push(pattern);
+        }
+
+        return freeHours;
+    }
+}
+
+exports.getDisponibilityMonthAPI = getDisponibilityMonthAPI
+
+exports.getDisponibilityDayAPI = getDisponibilityDayAPI
+
+exports.showNextMonths = async (numberOfMonths) => {
+    const months = []
+    for (let i = 0; i < numberOfMonths; i++) {
+        let aux = moment().add(i, "month");
+        
+        let responseDisponibilityMonths = await getDisponibilityMonthAPI(aux)
+        
+        if (responseDisponibilityMonths.length < 1){
+            numberOfMonths++;
+        } else {
+            
+            const pattern = {text: `${aux.format('MM/YY')}`, callback_data: aux.toISOString()};
+            months.push(pattern);
+        }
+    }
+    
+    return months;
+}
+
+function isHorarioDeTrabalho(hora) {
+    let isManha = hora >= WORK_HOURS.start && hora < WORK_HOURS.interval.start;
+    let isTarde = hora >= WORK_HOURS.interval.end && hora < WORK_HOURS.end;
+    return isManha || isTarde;
+}

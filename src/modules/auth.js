@@ -1,10 +1,9 @@
 const User = require("../model/user.model")
 const Interaction = require("../model/interaction.model")
 
-exports.login = async (chatId) => {
+exports.login = async (chatId, cpf = undefined) => {
     let userID, interactionNum, interactionId;
-    
-    const user = await User.findOne({chatId: chatId}).then(
+    const user = await User.findOne({chatId, chatId}).then(
         userObj => userID = userObj.id
     ).catch(
         err => console.log(`Erro em achar um usuário: ${err}`)

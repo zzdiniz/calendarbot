@@ -2,7 +2,7 @@ const moment = require("moment");
 
 const REGEX = {
     cpf: /^(\d{3}[\W]?){3}\d{2}$/gi,
-    email: /^\w+@\w+(.com|(.[a-zA-Z]+)*)$/gi,
+    email: /^\S+@\w+(.com|(.\w+)*)$/gi,
     telefone: /^(\+\d{2})?\W?(\(?\d{2}\)?)\W?(9)?\W?(\d{4})\W?(\d{4})$/gi,
     normaliza: /\W/gi
 }

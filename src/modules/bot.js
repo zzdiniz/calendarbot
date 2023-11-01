@@ -1,103 +1,138 @@
+const auth = require("./auth");
+const ChatRouter = require("./chat-router");
+const config = require("../../config/config")
 const TelegramBot = require('node-telegram-bot-api');
 
-const calendar = require("./calendar")
-const chatRouter = require("./chat-router");
-
-const auth = require("./auth");
 const { notificateUsers } = require('./notifications');
 const { getAvailableSchedules } = require('./events');
 
-const TELEGRAM_BOT_TOKEN = '6709653999:AAHkNF1g9y_2jLccfM_uXOnM6MUkiI9UzsY';
+
+// const TELEGRAM_BOT_TOKEN = '6709653999:AAHkNF1g9y_2jLccfM_uXOnM6MUkiI9UzsY';
+const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 
 ////////////////////////////////////////////////////////////////////////////
 const bot = new TelegramBot(TELEGRAM_BOT_TOKEN, { polling: true });
 
 notificateUsers(bot)
-getAvailableSchedules()
+// getAvailableSchedules()
+
 bot.on('message', async (msg) => {
     const chatId = msg.chat.id;
     const messageText = msg.text;
     const {userID, interactionId, interactionNum} = await auth.login(chatId);
-    const debug = false;
-    console.log('chat id do amigo', chatId)
-
-    // await calendar.getDisponibilityInRangeOfMonths(1);
     
     if (messageText === "/start") {
-      chatRouter.changeInteraction(interactionId, interactionNum, -interactionNum);
-      return chatRouter.start(bot, chatId, messageText);
+      await ChatRouter.changeInteraction(interactionId, 0);
+      return ChatRouter.start(bot, chatId, messageText);
     }
-    
-    console.log("Mensagem: "+messageText);
-    
-    let jumpTo = +1, response;
     
     switch (interactionNum) {
       case 0:
-        response = await chatRouter.cadastraUsuario_cpf(bot, chatId, messageText, userID);
-        if (response === false) { jumpTo = +4 };
+        await ChatRouter.cadastraUsuario_cpf(messageText, userID)
+          .then(async res =>{ 
+            if (res.status == 'logged') {
+              bot.sendMessage(chatId, res.message);
+              await ChatRouter.changeInteraction(interactionId, 5)
+              bot.sendMessage(chatId, "Selecione um dos seguintes meses:", await ChatRouter.sendDisponibleMonths(config.numberOfNextMonths));
+            } else if (res.status == "signin") {
+              bot.sendMessage(chatId, res.message);
+              ChatRouter.changeInteraction(interactionId, 1)
+            }
+          }).catch(err => bot.sendMessage(chatId, err.message))
         break;
       case 1:
-        response = await chatRouter.cadastraUsuario_nome(bot, chatId, messageText, userID);
-        break;
+        await ChatRouter.cadastraUsuario_nome(messageText, userID)
+          .then(async res => {
+            bot.sendMessage(chatId, res)
+            await ChatRouter.changeInteraction(interactionId, 2)
+          }).catch(err => bot.sendMessage(chatId, err.message))
+          break;
       case 2:
-        response = await chatRouter.cadastraUsuario_email(bot, chatId, messageText, userID);
+        await ChatRouter.cadastraUsuario_email(messageText, userID)
+          .then(async res =>{ 
+             if (res != undefined) {
+              bot.sendMessage(chatId, res);
+              await ChatRouter.changeInteraction(interactionId, 3)
+            }
+          }).catch(err => bot.sendMessage(chatId, err.message))
         break;
       case 3:
-        response = await chatRouter.cadastraUsuario_telefone(bot, chatId, messageText, userID);
+        await ChatRouter.cadastraUsuario_email(messageText, userID)
+          .then(async res =>{ 
+            if (res != undefined) {
+              bot.sendMessage(chatId, res);
+              await ChatRouter.changeInteraction(interactionId, 4)
+          }
+          }).catch(err => bot.sendMessage(chatId, err.message));
         break;
       case 4:
-        response = await chatRouter.selecionaMeses(bot, chatId, messageText, userID, 2000)
-    }
-    if (response === undefined) { jumpTo = 0 };
-    
-    chatRouter.changeInteraction(interactionId, interactionNum, jumpTo);
-    
-    if (debug) {
-      console.log("userID:\n\t"+userID+"\ninteractionID:\n\t"+interactionId+"\ninteractionNum\n\t"+interactionNum)
-      // await chatRouter.changeInteraction(interactionId, interactionNum, +1);
-      // bot.sendMessage(chatId, messageText)
-    }
-        
-        
-        
-        
-        /* if (messageText === '/start') {
-    bot.sendMessage(chatId, 'Olá! Sou seu bot de agendamento, por favor insira uma data em que deseja agendar sua consulta no formato dia/mês.');
-  } else {
-    const date = messageText.split('/')
-    const startDateTime = `2023-${date[1]}-${date[0]}T03:00:00.000Z`
-    const endDateTime = `2023-${date[1]}-${date[0]}T04:00:00.000Z`
-    const event = {
-      'summary': 'Teste criando evento via bot',
-      'description': `This is the description.`,
-      'start': {
-          'dateTime': startDateTime,
-          'timeZone': 'America/Sao_Paulo',
-      },
-      'end': {
-          'dateTime': endDateTime,
-          'timeZone': 'America/Sao_Paulo',
-      },
-    }
-    calendar.getEventByDateTime(startDateTime,endDateTime).then(
-      response =>{
-        const dateAlreadyExists = (response !== null && response !== undefined)? true : false
-        if(dateAlreadyExists){
-          bot.sendMessage(chatId, 'Infelizmente essa data já está ocupada, por favor escolha outra');
-          return
-        }
-        else{
-          calendar.insertEvent(event).then(response =>{
-            if( response.status === 200){
-              bot.sendMessage(chatId, `Pronto! Você tem uma consulta marcada para o dia ${date[0]}/${date[1]}.`);
-              db.insertEventOnDB(event)
+        await ChatRouter.cadastraUsuario_telefone(messageText, userID)
+          .then(async res => {
+            if (res != undefined) {
+              await ChatRouter.changeInteraction(interactionId, 5)
             }
-          })
-        }
-      }
-    )
-  } */
+          }).catch(err=>bot.sendMessage(chatId, err.message));
+        break;
+      case 5:
+        setTimeout(_ => {
+          bot.sendMessage(chatId, "Vamos marcar uma consulta!")
+        }, 100);
+        await ChatRouter.sendDisponibleMonths(bot, chatId,config.numberOfNextMonths)
+          .then( options => bot.sendMessage(chatId, "Selecione um dos seguintes meses:", options))
+          .catch(err => console.log(err.message))
+        break;
+      default:
+        // await ChatRouter.sendDisponibleMonths(bot, chatId, messageText,config.numberOfNextMonths);
+        bot.sendMessage(chatId, "Ocorreu um erro, envie /start para recomeçar!")
+        break;
+    }
 });
+
+bot.on("callback_query", async (query) => {
+  const chatId = query.message.chat.id;
+  const responseData = query.data;
+  let {userID, interactionId, interactionNum} = await auth.login(chatId);
+    try {
+      if (responseData == -1 && interactionNum > 5) {
+        await ChatRouter.changeInteraction(interactionId, --interactionNum);
+      } else if (responseData != -1) {
+        await ChatRouter.changeInteraction(interactionId, ++interactionNum);
+      }
+    } catch (e) {
+      console.log(e.message);
+    } finally {
+      switch (interactionNum) {
+        default:
+          bot.sendMessage(chatId, "Ocorreu um erro, envie /start para recomeçar!")
+          break;
+        case 5:
+          await ChatRouter.sendDisponibleMonths(config.numberOfNextMonths)
+            .then(options => bot.sendMessage(chatId, "Selecione um dos seguintes meses:", options))
+            .catch(err => console.log(err.message))
+          break;
+        case 6:
+          await ChatRouter.sendDisponibleWeeks(responseData)
+            .then(options => bot.sendMessage(chatId, "Selecione uma das seguintes semanas:", options))
+            .catch(err => console.log(err.message))
+          break;
+        case 7:
+          await ChatRouter.sendDisponibleDaysInWeek(responseData)
+            .then(options => bot.sendMessage(chatId, "Selecione um dos seguintes dias:", options))
+            .catch(err => console.log(err.message))
+          break;
+        case 8:
+          await ChatRouter.sendDisponibleHoursinDay(responseData)
+            .then(options => bot.sendMessage(chatId, "Selecione um dos seguintes horários:", options))
+            .catch(err => console.log(err.message))
+          break;
+        case 9:
+          await ChatRouter.setAppointment(userID, responseData)
+            .then(res => responseRouter = res)
+            .catch(err => console.log(err.message))
+          break;
+      }
+    }
+
+})
 
 module.exports = bot;
