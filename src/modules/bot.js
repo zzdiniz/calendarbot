@@ -8,8 +8,7 @@ const { notificateUsers } = require('./notifications');
 const { getAvailableSchedules } = require('./events');
 
 
-const TELEGRAM_BOT_TOKEN = '6709653999:AAHkNF1g9y_2jLccfM_uXOnM6MUkiI9UzsY';
-//const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
+const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 
 ////////////////////////////////////////////////////////////////////////////
 const bot = new TelegramBot(TELEGRAM_BOT_TOKEN, { polling: true });
