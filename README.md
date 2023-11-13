@@ -26,5 +26,5 @@ Para executar o bot basta seguir os seguintes passos:
 
 Para realizar o teste acesse o seguinte chat:
 
-* [Link para o chat](t.me/agendamento_consultas_bot).
+[Link para o chat](t.me/agendamento_consultas_bot)
 
