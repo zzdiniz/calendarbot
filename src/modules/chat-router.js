@@ -6,14 +6,36 @@ const TelegramBot = require("node-telegram-bot-api")
 const User = require("../model/user.model")
 const validators = require("./validators");
 
-exports.changeInteraction = async (interactionId, change, auxData = []) => {
-    // console.log(`changeInt:\n${interactionId}\n${interactionNum}\n${increment}`)
-    await Interaction.findByIdAndUpdate(interactionId, {interaction: change, auxData: auxData})
+exports.changeInteraction = async (interactionId, change, auxData = null) => {
+    let callback_data = false;
+    const interactionDocument = await Interaction.findById(interactionId);
+
+    if (interactionDocument.interaction == 4) {
+        interactionDocument.auxData = [];
+    }
+
+    if (interactionDocument.interaction > change) {
+        callback_data = interactionDocument.auxData.pop()
+        console.log("Caiu no botão voltar: "+callback_data);
+    }
+    
+    interactionDocument.interaction = change;
+    
+    if (auxData != null) { 
+        console.log("Adicionado a pilha de operações: "+auxData);
+        interactionDocument.auxData.push(auxData)
+    }
+    
+    interactionDocument.save();
+    
+    if (callback_data) { return callback_data };
+
+    /* await Interaction.findByIdAndUpdate(interactionId, {interaction: change, auxData: auxData})
         .then(
             update => console.log(`Updated Interaction: ${change}`)
         ).catch(
             err => console.log(`Erro em atualizar a interação:\n${err}\n`)
-        )
+        ) */
 }
 
 exports.start = (bot, chatId, message) => {
@@ -130,7 +152,8 @@ exports.sendDisponibleMonths = async (numberOfMonths) => {
 }
 
 exports.sendDisponibleWeeks = async (selectedDate) => {
-    return await Calendar.getDisponibilityMonthAPI(moment(selectedDate))
+    let date = selectedDate.includes("!") ? selectedDate.split("!")[0] : selectedDate;
+    return await Calendar.getDisponibilityMonthAPI(moment(date))
         .then( data => {
             const diasNoMes = moment(data[0].callback_data).daysInMonth()
             // Map para verificar se existem dias no periodo: Later
@@ -163,7 +186,7 @@ exports.sendDisponibleWeeks = async (selectedDate) => {
             const inline_keyboard = [
                 [ {text: `${weeks[0]}`, callback_data: `${callback_datas[0]}`}, {text: `${weeks[1]}`, callback_data: `${callback_datas[1]}`} ],
                 [ {text: `${weeks[2]}`, callback_data: `${callback_datas[2]}`}, {text: `${weeks[3]}`, callback_data: `${callback_datas[3]}`} ],
-                [ {text: "VOLTAR", callback_data: `${callback_datas[0]}`} ]
+                [ {text: "VOLTAR", callback_data: `-1`} ]
             ]
 
             if (weeks.length == 5) {

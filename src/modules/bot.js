@@ -87,17 +87,19 @@ bot.on('message', async (msg) => {
 
 bot.on("callback_query", async (query) => {
   const chatId = query.message.chat.id;
-  const responseData = query.data;
+  let responseData = query.data;
   let {userID, interactionId, interactionNum} = await auth.login(chatId);
     try {
       if (responseData == -1 && interactionNum > 4) {
-        await ChatRouter.changeInteraction(interactionId, --interactionNum);
+        responseData = await ChatRouter.changeInteraction(interactionId, --interactionNum);
       } else if (responseData != -1) {
-        await ChatRouter.changeInteraction(interactionId, ++interactionNum);
+        await ChatRouter.changeInteraction(interactionId, ++interactionNum, responseData);
       }
     } catch (e) {
       console.log(e.message);
     } finally {
+      console.log("InteractionNum: "+interactionNum);
+      console.log("Callback_data: "+ responseData);
       switch (interactionNum) {
         default:
           bot.sendMessage(chatId, "Ocorreu um erro, envie /start para recomeçar!")
