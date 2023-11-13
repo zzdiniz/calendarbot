@@ -267,9 +267,11 @@ exports.sendDisponibleHoursinDay = async (selectedDate) => {
 }
 
 exports.setAppointment = async (userID, selectedDate, chatId) => {
+    const user = await User.findById(userID);
+
     const event = {
-        'summary': 'Consulta do Rodrigo',
-        'description': `This is the description.`,
+        'summary': `Consulta: ${user.nome}`,
+        'description': `Consulta agendada via Bot do Telegram.\nContato do paciente:\nTelefone: ${user.telefone}\nEmail: ${user.email})`,
         'start': {
             'dateTime': selectedDate,
             'timeZone': 'America/Sao_Paulo',
@@ -278,7 +280,7 @@ exports.setAppointment = async (userID, selectedDate, chatId) => {
             'dateTime': moment(selectedDate).add(1,'hour').toISOString(),
             'timeZone': 'America/Sao_Paulo',
         },
-      }
+    }
     Event.create({date:selectedDate, chatId: chatId, userId: userID})
     const response = await Calendar.insertEvent(event)
     return response
