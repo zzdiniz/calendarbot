@@ -155,44 +155,49 @@ exports.sendDisponibleWeeks = async (selectedDate) => {
     let date = selectedDate.includes("!") ? selectedDate.split("!")[0] : selectedDate;
     return await Calendar.getDisponibilityMonthAPI(moment(date))
         .then( data => {
-            const diasNoMes = moment(data[0].callback_data).daysInMonth()
-            // Map para verificar se existem dias no periodo: Later
-            const weeks = [
-                `01/${moment(data[0].callback_data).month() + 1} - 07/${moment(data[0].callback_data).month() + 1}`,
-                `08/${moment(data[0].callback_data).month() + 1} - 14/${moment(data[0].callback_data).month() + 1}`,
-                `15/${moment(data[0].callback_data).month() + 1} - 21/${moment(data[0].callback_data).month() + 1}`,
-                `22/${moment(data[0].callback_data).month() + 1} - 28/${moment(data[0].callback_data).month() + 1}`
-            ];
+            const firstDayOfMonth = moment(date).startOf('month'); // Get the first day of the current month
+            const lastDayOfMonth = moment(date).endOf('month'); // Get the last day of the current month
+        
+            const weeks = []
+            const callback_datas = [];
+            const inline_keyboard = [];
 
-            const callback_datas = [
-                `${moment(data[0].callback_data).startOf("month").hour(8).toISOString()}!${moment(data[0].callback_data).date(7).hour(18).toISOString()}`,
-                `${moment(data[0].callback_data).date(8).hour(8).toISOString()}!${moment(data[0].callback_data).date(14).hour(18).toISOString()}`,
-                `${moment(data[0].callback_data).date(15).hour(8).toISOString()}!${moment(data[0].callback_data).date(21).hour(18).toISOString()}`,
-                `${moment(data[0].callback_data).date(22).hour(8).toISOString()}!${moment(data[0].callback_data).date(28).hour(18).toISOString()}`,
-                
-            ]
+            const keyboard_rows = 2
+
+            let currentIterationDate = moment(date).isSame(moment(), "month") ? moment() : firstDayOfMonth;
+        
+            while (currentIterationDate.isSameOrBefore(lastDayOfMonth)) {
+                // Check if the week belongs to the current month
+                let startOfWeek = currentIterationDate.clone();
+                let endOfWeek = currentIterationDate.clone().endOf('week');
+    
+                if (endOfWeek.month() != currentIterationDate.month()) { endOfWeek = lastDayOfMonth.clone(); }
+    
+                weeks.push({start: startOfWeek, end: endOfWeek});
+                callback_datas.push(`${startOfWeek.toISOString()}!${endOfWeek.toISOString()}`)
+
+        
+                // Move to the next Sunday to check the next week
+                currentIterationDate.add(1, 'week').startOf('week');
+            }
             
-            if (diasNoMes > 29) { 
-                weeks.push(`29/${moment(data[0].callback_data).month() + 1} - ${diasNoMes}/${moment(data[0].callback_data).month() + 1}`)
-                callback_datas.push(`${moment(data[0].callback_data).date(29).hour(8).toISOString()}!${moment(data[0].callback_data).endOf("month").hour(18).toISOString()}`,)
-            }
-            else if (diasNoMes === 29) {
-                weeks.push(`Dia 29/${moment(data[0].callback_data).month() + 1}`)
-                callback_datas.push(`${moment(data[0].callback_data).date(29).hour(8)}!${moment(data[0].callback_data).endOf("month").hour(18)}`)
-            };
+            let i = -1;
 
+            weeks.forEach((week, index) => {
+                if (index % keyboard_rows == 0) {
+                    inline_keyboard.push([]);
+                    i++;
+                }
+                let text = `${week.start.format('DD/MM')}-${week.end.format('DD/MM')}`
+                inline_keyboard[i].push({text, callback_data: callback_datas[index]});
+            })
 
-
-            const inline_keyboard = [
-                [ {text: `${weeks[0]}`, callback_data: `${callback_datas[0]}`}, {text: `${weeks[1]}`, callback_data: `${callback_datas[1]}`} ],
-                [ {text: `${weeks[2]}`, callback_data: `${callback_datas[2]}`}, {text: `${weeks[3]}`, callback_data: `${callback_datas[3]}`} ],
-                [ {text: "VOLTAR", callback_data: `-1`} ]
-            ]
-
-            if (weeks.length == 5) {
-                inline_keyboard[2].push({text: `${weeks[4]}`, callback_data: `${callback_datas[4]}`})
+            if (inline_keyboard[i].length == keyboard_rows) {
+                inline_keyboard.push([])
+                i++;
             }
 
+            inline_keyboard[i].unshift({text: "VOLTAR", callback_data: `-1`})
 
             const options = {
                 reply_markup: {
