@@ -15,9 +15,10 @@ Para executar o bot basta seguir os seguintes passos:
 
 * Renomear o arquivo _.env.copy.txt_ para _.env_
 
-* Na pasta do repositório executar o seguinte comando:
+* Na pasta do repositório executar os seguintes comandos:
 
 ```bash
+    npm install
     node index.js
 ```
 * Pronto! Agora o bot já pode ser testado.
