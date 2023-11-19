@@ -8,29 +8,33 @@ const userSchema = new mongoose.Schema({
     email: {
         type: String,
         // default: "email@email.com",
-        validate: {
+        /* validate: {
             validator: validators.valid_email,
             message: validators.invalidInsertMessage
-        }
+        } */
     },
     cpf: {
         type: String,
         // default: "12345678910",
-        validate: {
+        /* validate: {
             validator: validators.valid_cpf,
             message: validators.invalidInsertMessage
-        }
+        } */
     },
     telefone: {
         type: String,
         // default: "0000000000",
-        validate: {
+        /* validate: {
             validator: validators.valid_telefone,
             message: validators.invalidInsertMessage
-        }
+        } */
     },
     chatId: {
         type: String,
+    },
+    active: {
+        type: Boolean,
+        default: false
     }
 })
 

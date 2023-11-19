@@ -2,14 +2,14 @@ const Calendar = require("./calendar");
 const Event = require("../model/event.model")
 const Interaction = require("../model/interaction.model");
 const moment = require("moment")
-const TelegramBot = require("node-telegram-bot-api")
+// const TelegramBot = require("node-telegram-bot-api")
 const User = require("../model/user.model")
 const validators = require("./validators");
 
-exports.changeInteraction = async (interactionId, change, auxData = null) => {
+exports.changeInteraction = async (userID, change, auxData = null) => {
     let callback_data = false;
-    const interactionDocument = await Interaction.findById(interactionId);
-
+    const interactionDocument = await Interaction.findOne({userID: userID});
+    console.log(userID);
     if (interactionDocument.interaction == 4) {
         interactionDocument.auxData = [];
     }
@@ -29,13 +29,6 @@ exports.changeInteraction = async (interactionId, change, auxData = null) => {
     interactionDocument.save();
     
     if (callback_data) { return callback_data };
-
-    /* await Interaction.findByIdAndUpdate(interactionId, {interaction: change, auxData: auxData})
-        .then(
-            update => console.log(`Updated Interaction: ${change}`)
-        ).catch(
-            err => console.log(`Erro em atualizar a interação:\n${err}\n`)
-        ) */
 }
 
 exports.start = (bot, chatId, message) => {
@@ -51,12 +44,7 @@ exports.cadastraUsuario_cpf = async (message, userID) => {
         throw Error("CPF INVÁLIDO!\nPor favor, insira novamente")
     } else {
         const cpf = validators.normaliza(message);
-        const user = await User.findOne({cpf: cpf}).exec()
-            .then(result => result);
-         
-        if (user) {
-            return {status: 'logged', message: `Bem vindo de volta ${user.nome}`}
-        }
+        const user = await User.findOne({cpf: cpf})
 
         return await User.findByIdAndUpdate(userID, {cpf: cpf}).then(
             updated => {
