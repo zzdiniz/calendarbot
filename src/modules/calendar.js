@@ -24,13 +24,15 @@ const WORK_HOURS = {
     total: 8
 };
 
-moment.locale("pt-br");
+// moment.locale("pt-br");
 
 require('dotenv').config();
 
 const isToday = (mom, comparison = moment()) => mom.isSame(comparison, "day")
 
-const isDayValid = (mom) => !([0,6].includes(mom.weekday()))
+const isDayValid = (mom) => {
+    return !([0,6].includes(mom.weekday())) && mom.isAfter(moment())
+} 
 
 exports.isDayValid = isDayValid
 
@@ -101,7 +103,7 @@ exports.getBusySchedules = async (startDateTime,endDateTime) =>{
         });
 
         if (response.data.items.length > 0) {
-            // Retorna o primeiro evento correspondente encontrado
+            // Retorna todos os eventos encontrados
             return response.data.items;
         } else {
             return null; // Retorna null se nenhum evento correspondente for encontrado
@@ -111,6 +113,7 @@ exports.getBusySchedules = async (startDateTime,endDateTime) =>{
         return null; // Retorna null em caso de erro
     }
 }
+
 const getDisponibilityMonthAPI = async (mom) => {
     const queryCurrentMonth = (mom) => moment().isSame(mom, "month")
     console.log("Mês"+mom.toISOString())
@@ -118,13 +121,6 @@ const getDisponibilityMonthAPI = async (mom) => {
         start: queryCurrentMonth(mom) ? mom.clone().hour(WORK_HOURS.start).startOf("hour") : mom.clone().startOf("month").hour(WORK_HOURS.start).startOf("hour"),
         end: mom.clone().endOf("month").hour(WORK_HOURS.end).startOf("hour"),
     }
-    
-    /* if (!isMonthValid(query.start)) {
-        console.warn('Mês Inválido ' + (mom.month() + 1));
-        return [];
-    } */
-
-
 
     const request = {
         auth:auth,
@@ -146,15 +142,17 @@ const getDisponibilityMonthAPI = async (mom) => {
         console.error('The API returned an error: ' + err);
         return;
     } finally {
-        const busyTimes = response
-            .data
-            .calendars[CALENDAR_ID]
-            .busy
-            .filter(obj => isDayValid(moment(obj.start)))
-            .map(obj => {
-                let start = moment(obj.start)
-                return start
-            });
+        const busyTimes = response != null ? 
+            response
+                .data
+                .calendars[CALENDAR_ID]
+                .busy
+                .filter(obj => isDayValid(moment(obj.start)))
+                .map(obj => {
+                    let start = moment(obj.start)
+                    let end = moment(obj.end)
+                    return {start, end}
+                }) : [];
         
         const freeDays = [];
 
@@ -170,7 +168,7 @@ const getDisponibilityMonthAPI = async (mom) => {
                 
                 aux.hour(hora).startOf("hour");
                 
-                if (isHorarioDeTrabalho(hora) && !busyTimes.some(el => aux.isSame(el))) { 
+                if (isHorarioDeTrabalho(hora) && !busyTimes.some(el => aux.isBetween(el.start, el.end))) { 
                     let free = aux.clone()
                     const pattern = {text: `${free.format('[Dia] DD')}`, callback_data: `${free.toISOString()}`};
                     freeDays.push(pattern);
@@ -185,22 +183,27 @@ const getDisponibilityMonthAPI = async (mom) => {
 
 exports.getDisponibilityWeekAPI = async (initialDate, finalDate) => {
     const busy = await this.getBusySchedules(moment(initialDate).toISOString(), moment(finalDate).toISOString())
-    
-    const busyFormated = busy!=null ? busy.map(res => moment(res.start.dateTime)) 
-        .filter(day => isDayValid(moment(day)))
-        : [];
-        
 
-    //time.isBetween(weekStartDate, weekEndDate, 'day', '[]')
-    
+    const busyFormated = busy != null ? 
+        busy
+            .filter(obj => {
+                return isDayValid(moment(obj.start.dateTime))
+            })
+            .map(obj => {
+                let start = moment(obj.start.dateTime)
+                let end = moment(obj.end.dateTime)
+                return {start, end}
+            }) : [];
+        
     const freeDays = [];
 
     for (let weekDay = 0; weekDay<7; weekDay++) {
         let aux = moment(initialDate).add(weekDay, "days");
+        console.log(aux.format("[Dia:] DD"))
         if (!isDayValid(aux)) {continue};
         for (let hour = WORK_HOURS.start; hour < WORK_HOURS.end; hour++) {
-            aux.hour(hour).startOf(hour);
-            if (isHorarioDeTrabalho(hour) && !busyFormated.some(el => aux.isSame(el))) {
+            aux.hour(hour).startOf("hour");
+            if (isHorarioDeTrabalho(hour) && !busyFormated.some(el => aux.isBetween(el.start, el.end) || aux.isSame(el.start))) {
                 let free = aux.clone()
                 const pattern = {text: `${free.format('[Dia] DD/MM')}`, callback_data: `${free.toISOString()}`};
                 freeDays.push(pattern);
@@ -210,6 +213,7 @@ exports.getDisponibilityWeekAPI = async (initialDate, finalDate) => {
     }
 
     return freeDays;
+   
 }
 
 
@@ -241,14 +245,16 @@ const getDisponibilityDayAPI = async (mom) => {
         console.error('The API returned an error: ' + err);
         return;
     } finally {
-        const busyTimes = response
-            .data
-            .calendars[CALENDAR_ID]
-            .busy
-            .map(obj => {
-                let start = moment(obj.start)
-                return start
-            });
+        const busyTimes = response != null ?
+            response
+                .data
+                .calendars[CALENDAR_ID]
+                .busy
+                .map(obj => {
+                    let start = moment(obj.start)
+                    let end = moment(obj.end)
+                    return {start, end}
+                }) : [];
         
         const freeHours = [];
 
@@ -258,7 +264,7 @@ const getDisponibilityDayAPI = async (mom) => {
                 
             aux.hour(hora).startOf("hour")
             
-            if (!isHorarioDeTrabalho(hora) || busyTimes.some(el => aux.isSame(el))) { continue }
+            if (!isHorarioDeTrabalho(hora) || busyTimes.some(el => aux.isBetween(el.start, el.end) || aux.isSame(el.start))) { continue }
             
             let free = aux.clone()
             
