@@ -259,7 +259,7 @@ exports.setAppointment = async (userID, selectedDate, chatId) => {
 
     const event = {
         'summary': `Consulta: ${user.nome}`,
-        'description': `Consulta agendada via Bot do Telegram.\nContato do paciente:\nTelefone: ${user.telefone}\nEmail: ${user.email})`,
+        'description': `Consulta agendada via Bot do Telegram.\nContato do paciente:\nTelefone: ${user.telefone}\nEmail: ${user.email}`,
         'start': {
             'dateTime': selectedDate,
             'timeZone': 'America/Sao_Paulo',

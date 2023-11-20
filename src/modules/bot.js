@@ -97,7 +97,7 @@ bot.on('message', async (msg) => {
 bot.on("callback_query", async (query) => {
   const chatId = query.message.chat.id;
   let responseData = query.data;
-  let {userID, interactionNum} = await auth.login(chatId);
+  let {userID, interactionNum} = await auth.getActiveUserInChat(chatId);
   try {
     if (responseData == -1 && interactionNum > 4) {
       responseData = await ChatRouter.changeInteraction(userID, --interactionNum);
