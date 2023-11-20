@@ -44,7 +44,6 @@ exports.cadastraUsuario_cpf = async (message, userID) => {
         throw Error("CPF INVÁLIDO!\nPor favor, insira novamente")
     } else {
         const cpf = validators.normaliza(message);
-        const user = await User.findOne({cpf: cpf})
 
         return await User.findByIdAndUpdate(userID, {cpf: cpf}).then(
             updated => {

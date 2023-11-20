@@ -1,6 +1,6 @@
 const User = require("../model/user.model")
 const Interaction = require("../model/interaction.model")
-
+const validator = require("./validators")
 exports.getActiveUserInChat = async (chatId) => {
     const user = await User.findOne({chatId, active: true});
 
@@ -21,8 +21,8 @@ exports.createUser = async (chatId) => {
 }
 
 exports.tryLogin = async (chatId, cpf) => {
-    let user = await User.findOne({chatId, cpf});
-    
+    let cpfNormalizado = validator.normaliza(cpf);
+    let user = await User.findOne({chatId, cpf: cpfNormalizado});
     if (user) {
         console.log("Usuário ja cadastrado na plataforma!")
         if (!user.active) {
