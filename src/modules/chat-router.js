@@ -9,8 +9,9 @@ const validators = require("./validators");
 exports.changeInteraction = async (userID, change, auxData = null) => {
     let callback_data = false;
     const interactionDocument = await Interaction.findOne({userID: userID});
-    console.log(userID);
-    if (interactionDocument.interaction == 4) {
+    const lastIndex = interactionDocument.auxData.length - 1;
+    
+    if (interactionDocument.interaction <= 5) {
         interactionDocument.auxData = [];
     }
 
@@ -21,11 +22,18 @@ exports.changeInteraction = async (userID, change, auxData = null) => {
     
     interactionDocument.interaction = change;
     
-    if (auxData != null) { 
-        console.log("Adicionado a pilha de operações: "+auxData);
-        interactionDocument.auxData.push(auxData)
+    if (auxData != null && interactionDocument.interaction > 5) {
+        let pushedAuxData = auxData
+        if (lastIndex == 0) {
+            pushedAuxData = interactionDocument.auxData[lastIndex];
+        } 
+        console.log("Adicionado a pilha de operações: "+pushedAuxData);
+        interactionDocument.auxData.push(pushedAuxData)
     }
     
+    console.log(`Interação ${interactionDocument.interaction} com pilha de acesso:`)
+    console.log(interactionDocument.auxData)
+
     interactionDocument.save();
     
     if (callback_data) { return callback_data };
