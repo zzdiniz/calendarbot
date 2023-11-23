@@ -15,7 +15,7 @@ const notificateUsers = (bot) =>{
                 if(currentDate.diff(dbDate, 'hours') >= -24 && currentDate.diff(dbDate, 'hours') <= 0){
                     const chatId = event.chatId
                     const user = await User.findById(event.userId);
-                    const notification = `Olá ${user.nome}!\nVocê possui uma consulta que está marcado para amanhã (${dbDate.format("DD/MM")}) as ${dbDate.format("HH")}hrs!\nEstamos ansiosos para te conhecer, caso deseje cancelar a consulta digite "/cancel".`
+                    const notification = `Olá ${user.nome}!\nVocê possui uma consulta que está marcada para amanhã (${dbDate.format("DD/MM")}) as ${dbDate.format("HH")}hrs!\nEstamos ansiosos para te conhecer, caso deseje cancelar a consulta digite "/cancel".`
                     bot.sendMessage(chatId,notification)
                 }
             })
