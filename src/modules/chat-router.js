@@ -41,7 +41,7 @@ exports.changeInteraction = async (userID, change, auxData = null) => {
 
 exports.start = (bot, chatId, message) => {
     const returnMessage =   "Olá!\n" + 
-                            "Sou seu bot de agendamento, por favor me informe seu cpf.";
+                            "Sou o AgendaBot, seu bot de agendamento 🗓️.\nPara iniciar o seu atendimento, por favor me informe seu cpf.";
 
     bot.sendMessage(chatId, returnMessage); 
 }
