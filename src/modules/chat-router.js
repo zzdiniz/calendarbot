@@ -2,15 +2,16 @@ const Calendar = require("./calendar");
 const Event = require("../model/event.model")
 const Interaction = require("../model/interaction.model");
 const moment = require("moment")
-const TelegramBot = require("node-telegram-bot-api")
+// const TelegramBot = require("node-telegram-bot-api")
 const User = require("../model/user.model")
 const validators = require("./validators");
 
-exports.changeInteraction = async (interactionId, change, auxData = null) => {
+exports.changeInteraction = async (userID, change, auxData = null) => {
     let callback_data = false;
-    const interactionDocument = await Interaction.findById(interactionId);
-
-    if (interactionDocument.interaction == 4) {
+    const interactionDocument = await Interaction.findOne({userID: userID});
+    const lastIndex = interactionDocument.auxData.length - 1;
+    
+    if (interactionDocument.interaction <= 5) {
         interactionDocument.auxData = [];
     }
 
@@ -21,26 +22,26 @@ exports.changeInteraction = async (interactionId, change, auxData = null) => {
     
     interactionDocument.interaction = change;
     
-    if (auxData != null) { 
-        console.log("Adicionado a pilha de operações: "+auxData);
-        interactionDocument.auxData.push(auxData)
+    if (auxData != null && interactionDocument.interaction > 5) {
+        let pushedAuxData = auxData
+        if (lastIndex == 0) {
+            pushedAuxData = interactionDocument.auxData[lastIndex];
+        } 
+        console.log("Adicionado a pilha de operações: "+pushedAuxData);
+        interactionDocument.auxData.push(pushedAuxData)
     }
     
+    console.log(`Interação ${interactionDocument.interaction} com pilha de acesso:`)
+    console.log(interactionDocument.auxData)
+
     interactionDocument.save();
     
     if (callback_data) { return callback_data };
-
-    /* await Interaction.findByIdAndUpdate(interactionId, {interaction: change, auxData: auxData})
-        .then(
-            update => console.log(`Updated Interaction: ${change}`)
-        ).catch(
-            err => console.log(`Erro em atualizar a interação:\n${err}\n`)
-        ) */
 }
 
 exports.start = (bot, chatId, message) => {
     const returnMessage =   "Olá!\n" + 
-                            "Sou seu bot de agendamento, por favor me informe seu cpf.";
+                            "Sou o AgendaBot, seu bot de agendamento 🗓️.\nPara iniciar o seu atendimento, por favor me informe seu cpf.";
 
     bot.sendMessage(chatId, returnMessage); 
 }
@@ -51,12 +52,6 @@ exports.cadastraUsuario_cpf = async (message, userID) => {
         throw Error("CPF INVÁLIDO!\nPor favor, insira novamente")
     } else {
         const cpf = validators.normaliza(message);
-        const user = await User.findOne({cpf: cpf}).exec()
-            .then(result => result);
-         
-        if (user) {
-            return {status: 'logged', message: `Bem vindo de volta ${user.nome}`}
-        }
 
         return await User.findByIdAndUpdate(userID, {cpf: cpf}).then(
             updated => {
@@ -271,7 +266,7 @@ exports.setAppointment = async (userID, selectedDate, chatId) => {
 
     const event = {
         'summary': `Consulta: ${user.nome}`,
-        'description': `Consulta agendada via Bot do Telegram.\nContato do paciente:\nTelefone: ${user.telefone}\nEmail: ${user.email})`,
+        'description': `Consulta agendada via Bot do Telegram.\nContato do paciente:\nTelefone: ${user.telefone}\nEmail: ${user.email}`,
         'start': {
             'dateTime': selectedDate,
             'timeZone': 'America/Sao_Paulo',
